@@ -1,22 +1,25 @@
-from typing import Sequence
+from typing import Sequence, Iterable
 from enum import Enum
+from collections import Counter
 
 from tile import Tile, Suit
 
 
-class Meld:
+class TileGroup:
     tiles: tuple[Tile, ...]
     discarded: Tile
+    called: bool
     
-    def __init__(self, tiles: Sequence[Tile], discarded: Tile):
+    def __init__(self, tiles: Sequence[Tile], discarded: Tile, called: bool):
         self.tiles = tuple(tiles)
         self.discarded = discarded
+        self.called = called
     
     def is_valid(self) -> bool:
-        return False
+        return self.discarded in self.tiles
 
 
-class Chii(Meld):
+class Sequence(TileGroup):
     def is_valid(self):
         if len(self.tiles) != 3 or self.discarded not in self.tiles:
             return False
@@ -29,38 +32,84 @@ class Chii(Meld):
         ranks = sorted(tile.rank for tile in self.tiles)
         if ranks[1] - ranks[0] == ranks[2] - ranks[1] == 1:
             return True
-        return False
+        return super().is_valid()
 
 
-class Pong(Meld):
+class Triplet(TileGroup):
     def is_valid(self):
         if len(self.tiles) != 3 or self.discarded not in self.tiles:
             return False
-        return len(set(self.tiles)) == 1
+        return len(set(self.tiles)) == 1 and super().is_valid()
 
 
-class KanType(Enum):
+class QuadType(Enum):
     CLOSED = 0
     OPEN = 1
     ADDED_OPEN = 2
 
 
-class Kan(Meld):
-    type_: KanType
+class Quad(TileGroup):
+    type_: QuadType
     
-    def __init__(self, tiles, discarded, type_: KanType):
-        super().__init__(tiles, discarded)
+    def __init__(self, tiles, discarded, called, type_: QuadType):
+        super().__init__(tiles, discarded, called)
         self.type_ = type_
     
     def is_valid(self):
-        if len(self.tiles) != 4 or (self.type_ != KanType.CLOSED and self.discarded not in self.tiles):
+        if len(self.tiles) != 4 or (self.type_ != QuadType.CLOSED and self.discarded not in self.tiles):
             return False
         return len(set(self.tiles)) == 1
 
 
+Mentsu = TileGroup
+Shuntsu = Sequence
+Kotsu = Triplet
+Kantsu = Quad
+
+
+class CallType(Enum):
+    CHII = 1
+    PON = 2
+    KAN_CLOSED = 3
+    KAN_OPEN = 4
+    KAN_ADDED_OPEN = 5
+
+
 class Hand:
     hand: list[Tile]
-    melds: list[tuple[Tile]]
+    melds: list[TileGroup]
     
     def __init__(self):
-        pass
+        self.hand = []
+        self.melds = []
+    
+    def add_tile(self, tile: Tile):
+        self.hand.append(tile)
+    
+    def add_tiles(self, tiles: Iterable[Tile]):
+        self.hand.extend(tiles)
+    
+    def call_acceptable_list(self, tile: Tile) -> list[tuple[CallType, TileGroup]]:
+        result_list = []
+        hand_table = {suit: [0]*10 for suit in Suit}
+        for hand_tile in self.hand:
+            hand_table[hand_tile.suit][hand_tile.rank] += 1
+        if tile.is_number():
+            if tile.rank >= 3 and hand_table[tile.suit][tile.rank - 2] >= 1 and hand_table[tile.suit][tile.rank - 1] >= 1:
+                result_list.append((
+                    CallType.CHII, 
+                    Shuntsu([Tile(tile.rank - 2, tile.suit), Tile(tile.rank - 1, tile.suit), tile], tile, False)
+                    ))
+            if tile.rank <= 7 and hand_table[tile.suit][tile.rank + 1] >= 1 and hand_table[tile.suit][tile.rank + 2] >= 1:
+                result_list.append((
+                    CallType.CHII, 
+                    Shuntsu([Tile(tile.rank + 1, tile.suit), Tile(tile.rank + 2, tile.suit), tile], tile, False)
+                    ))
+        if hand_table[tile.suit][tile.rank] >= 3:
+            result_list.append((CallType.PON, Triplet([tile]*3, tile, False)))
+        if hand_table[tile.suit][tile.rank] >= 4:
+            result_list.append((CallType.KAN_OPEN, Quad([tile]*4, tile, False, QuadType.CLOSED)))
+        for meld in self.melds:
+            if isinstance(meld, Triplet) and meld.discarded.equal(tile):
+                result_list.append((CallType.KAN_ADDED_OPEN, Quad(meld.tiles, tile, False, QuadType.ADDED_OPEN)))
+

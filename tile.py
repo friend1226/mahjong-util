@@ -10,116 +10,61 @@ class Suit(Enum):
 
 
 class Tile:
-    def __init__(self, rank: int, suit: Suit):
+    def __init__(self, rank: int, suit: Suit, red: bool = False):
         self.rank = rank
         self.suit = suit
+        self.red = red
     
     def __str__(self):
         return f"{self.rank}{self.suit.value}"
 
     def __hash__(self):
-        return hash((self.rank, self.suit))
+        return hash((self.rank, self.suit, self.red))
 
     def __eq__(self, other: 'Tile'):
+        return self.rank == other.rank and self.suit == other.suit and self.red == other.red
+    
+    def equal(self, other: 'Tile'):
         return self.rank == other.rank and self.suit == other.suit
 
     def dora(self) -> 'Tile':
-        d_rank, d_suit = self.rank + 1, self.suit
-        match self.suit:
-            case Suit.MAN | Suit.PIN | Suit.SOU:
-                if d_rank > 9:
-                    d_rank = 1
-            case Suit.WIND:
-                if d_rank > 4:
-                    d_rank = 1
-            case Suit.DRAGON:
-                if d_rank > 7:
-                    d_rank = 5
-        return Tile(d_rank, d_suit)
+        next_rank = self.rank + 1
+
+        if self.is_number():
+            # 9 -> 1
+            if next_rank > 9:
+                next_rank = 1
+        elif self.is_wind():
+            # 북(4) -> 동(1)
+            if next_rank > 4:
+                next_rank = 1
+        elif self.is_dragon():
+            # 중(7) -> 백(5)
+            if next_rank > 7:
+                next_rank = 5
+
+        return Tile(next_rank, self.suit)
+    
+    def is_number(self) -> bool:
+        return self.suit in {Suit.MAN, Suit.PIN, Suit.SOU}
     
     def is_terminal(self) -> bool:
-        return self.suit in {Suit.MAN, Suit.PIN, Suit.SOU} and (self.rank == 1 or self.rank == 9)
-
-
-class Numbers(Tile):
-    red: bool
+        return self.is_number() and (self.rank == 1 or self.rank == 9)
     
-    def __init__(self, rank: int, suit: Suit):
-        if rank == 0:
-            self.red = True
-            rank = 5
-        else:
-            self.red = False
-        super().__init__(rank, suit)
+    def is_man(self) -> bool:
+        return self.suit == Suit.MAN
+    
+    def is_pin(self) -> bool:
+        return self.suit == Suit.PIN
+    
+    def is_sou(self) -> bool:
+        return self.suit == Suit.SOU
 
+    def is_wind(self) -> bool:
+        return self.suit == Suit.WIND
+    
+    def is_dragon(self) -> bool:
+        return self.suit == Suit.DRAGON
 
-class Honor(Tile):
-    pass
-
-
-class Mansu(Numbers):
-    def __init__(self, rank: int):
-        super().__init__(rank, Suit.MAN)
-
-
-class Pinsu(Numbers):
-    def __init__(self, rank: int):
-        super().__init__(rank, Suit.PIN)
-
-
-class Sousu(Numbers):
-    def __init__(self, rank: int):
-        super().__init__(rank, Suit.SOU)
-
-
-class Wind(Honor):
-    pass
-
-
-class Ton(Wind):
-    def __init__(self):
-        super().__init__(1, Suit.WIND)
-
-
-class Nan(Wind):
-    def __init__(self):
-        super().__init__(2, Suit.WIND)
-
-
-class Sha(Wind):
-    def __init__(self):
-        super().__init__(3, Suit.WIND)
-
-
-class Pei(Wind):
-    def __init__(self):
-        super().__init__(4, Suit.WIND)
-
-
-class Dragon(Honor):
-    pass
-
-
-class Haku(Dragon):
-    def __init__(self):
-        super().__init__(5, Suit.DRAGON)
-
-
-class Hatsu(Dragon):
-    def __init__(self):
-        super().__init__(6, Suit.DRAGON)
-
-
-class Chun(Dragon):
-    def __init__(self):
-        super().__init__(7, Suit.DRAGON)
-
-
-East = Ton
-South = Nan
-West = Sha
-North = Pei
-
-White = Haku
-Green = Hatsu
-Red = Chun
+    def is_honor(self) -> bool:
+        return self.is_wind() or self.is_dragon()
