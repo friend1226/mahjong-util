@@ -46,7 +46,7 @@ class Tile:
         return Tile(next_rank, self.suit)
     
     def is_number(self) -> bool:
-        return self.suit in {Suit.MAN, Suit.PIN, Suit.SOU}
+        return self.suit.value != 'z'
     
     def is_terminal(self) -> bool:
         return self.is_number() and (self.rank == 1 or self.rank == 9)
