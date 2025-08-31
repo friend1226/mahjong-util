@@ -1,6 +1,13 @@
+from typing import TYPE_CHECKING
 from enum import Flag, auto
 
+if TYPE_CHECKING:
+    from .hand import Hand
+    from .game import GameState, PlayerState
+
+
 class Rule(Flag):
+    NONE = 0
     RIICHI = READY = auto()
     TSUMO = SELF_PICK = auto()
     IPPATSU = ONE_SHOT = auto()
@@ -52,4 +59,14 @@ class Rule(Flag):
     
     NAGASHI_MANGAN = auto()
 
+
 Yaku = Rule
+
+
+def get_rule(
+        hand: Hand, 
+        game_state: GameState, 
+        player_state: PlayerState, 
+        is_ron: bool) -> list[Rule]:
+    result_rules = []
+    return result_rules
